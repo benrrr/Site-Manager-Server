@@ -3,6 +3,10 @@
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include "shared.h"
 
 int main(int argc, char * argv[])
 {
@@ -12,10 +16,94 @@ int main(int argc, char * argv[])
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons(7777);
-
-    sock = socket(AF_INET, SOCK_STREAM, 0);
-
     inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
 
-    connect(sock, (struct sockaddr *)&addr, sizeof(addr));
+
+    while(1)
+    {
+        char filename[FILENAME_MAX] = "blank";
+        char savename[FILENAME_MAX];
+
+        int selection = 0;
+        char *selections[] = {
+            "/var/www/html/",
+            "/var/www/html/Sales/",
+            "/var/www/html/Marketing/",
+            "/var/www/html/Promotions/",
+            "/var/www/html/Offers/"};
+
+        struct stat buffer;
+        while(stat(filename, &buffer) != 0)
+        {
+            printf("Enter the path of the file you wish to upload:\n");
+            scanf("%s", filename);
+        };
+
+        while(selection < 1 || selection > 5)
+        {
+            printf("Which directory do you wish to upload it to.\n\
+                1. Root\n\
+                2. Sales\n\
+                3. Marketing\n\
+                4. Promotions\n\
+                5. Offers\n");
+
+            scanf("%d", &selection);
+        };
+
+        printf("Enter the name it should be saved as.\n");
+        scanf("%s", savename);
+        printf("%s", savename);
+        int dirLen = strlen(selections[--selection]);
+        int nameLen = strlen(filename);
+
+        int totalLen = dirLen + nameLen;
+
+        if(totalLen <= FILENAME_MAX)
+        {
+            char targetPath[totalLen];
+            printf("in if");
+            strcpy(targetPath, selections[selection]);
+            printf("copied");
+            strcat(targetPath, savename);
+            printf("catted");
+
+            sock = socket(AF_INET, SOCK_STREAM, 0);
+            int retval = connect(sock, (struct sockaddr *)&addr, sizeof(addr));
+
+            if(retval != 0)
+            {
+                printf("Could not connect");
+                exit(retval);
+            };
+
+            printf("Connected, sending %s", targetPath);
+            fflush(stdout);
+
+            send(sock, targetPath, totalLen, 0);
+            printf("Sent");
+            fflush(stdout);
+
+            char inbuf[BUFSIZE];
+            recv(sock, inbuf, BUFSIZE, 0);
+
+            printf("RESPONSE: %s", inbuf);
+            char buf[BUFSIZE];
+            FILE *fp = fopen(filename, "r");
+            int readAmt;
+
+            while((readAmt = fread(buf, sizeof(char), BUFSIZE, fp)) > 0)
+            {
+                send(sock, buf, readAmt, 0);
+                bzero(buf, BUFSIZE);
+            };
+
+            fclose(fp);
+            close(sock);
+        }
+        else
+        {
+            printf("Target directory + filename too long for system");
+        };    
+    }
 }

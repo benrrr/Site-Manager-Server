@@ -1,7 +1,8 @@
 CC=gcc
 serverObj = handler.o server.o 
 clientObj = client.o
-serverH = ./src/handler.h
+serverH = ./src/handler.h ./src/shared.h
+clientH = ./src/shared.h
 
 all: client server
 
