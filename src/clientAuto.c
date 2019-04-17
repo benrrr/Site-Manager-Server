@@ -47,7 +47,7 @@ int main(int argc, char * argv[])
         while(stat(filename, &buffer) != 0)
         {
             printf("\n\nEnter the path of the file you wish to upload: ");
-            scanf("%s", filename);
+            strcpy(filename, "../makefile");
         };
 
         //ask until input is in desired range
@@ -60,11 +60,11 @@ int main(int argc, char * argv[])
                 4. Promotions\n\
                 5. Offers\n");
 
-            scanf("%d", &selection);
+            selection = 2;
         };
 
         printf("\n\nEnter the name it should be saved as: ");
-        scanf("%s", savename);
+        strcpy(savename, "makefile");
 
         int dirLen = strlen(selections[--selection]);
         int nameLen = strlen(filename);
@@ -147,5 +147,7 @@ int main(int argc, char * argv[])
         fclose(fp);
         close(sock); 
         fflush(stdout);
+
+        sleep(1);
     }
 }
