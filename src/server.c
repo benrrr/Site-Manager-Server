@@ -30,7 +30,7 @@ int main(int argc, char * argv[])
 
     while(1)
     {
-        printf("Waiting for connections...");
+        printf("Waiting for connections...\n\n");
         fflush(stdout);
         cSock = accept(lSock, (struct sockaddr *)&cAddr, &len);
 
@@ -40,14 +40,14 @@ int main(int argc, char * argv[])
         
         char *connectedIP = inet_ntoa(cAddr.sin_addr);
 
-        printf("New connection from %s", connectedIP);
+        printf("New connection from %s\n\n", connectedIP);
         fflush(stdout);
         pthread_t thread;
         int retval = pthread_create(&thread, NULL, &handler, (void *)&args);
 
         if(retval != 0)
         {
-            printf("Error creating thread");
+            printf("Error creating thread\n\n");
         };
     };
 };

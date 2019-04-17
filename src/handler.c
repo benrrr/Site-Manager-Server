@@ -1,10 +1,16 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <string.h>
 #include <pthread.h>
+#include <sys/fsuid.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/file.h>
+#include <syslog.h>
 
 #include "handler.h"
 #include "shared.h"
@@ -12,9 +18,6 @@
 void *handler(void *connArg)
 {
     pid_t tid = syscall(SYS_gettid);
-
-    printf("Thread started");
-    fflush(stdout);
     struct connArgs *args = (struct connArgs *)connArg;
 
     int sock = args->sock;
@@ -23,46 +26,91 @@ void *handler(void *connArg)
   
     char *connectedIP = inet_ntoa(addr.sin_addr);
     
-    printf("New connection from %s on thread %d", connectedIP, tid);
-    fflush(stdout);
-
+    char ids[(ID_MAX * GROUP_MAX) + 2 + GROUP_MAX];
     char filename[FILENAME_MAX];
-    recv(sock, filename, FILENAME_MAX, 0);
-    printf("%s\n", filename);
-    fflush(stdout);
 
-    //TODO acquire lock on file if it exists
+    int sentAmt, recvAmt;
 
-    FILE *fp = fopen(filename, "w");
-    
-    if(fp == NULL)
+    recvAmt = recv(sock, ids,(ID_MAX * GROUP_MAX) + 2 + GROUP_MAX, 0);
+    sentAmt = send(sock, OK, strlen(OK), 0);
+    recvAmt = recv(sock, filename, FILENAME_MAX, 0); 
+
+    char requiredID[ID_MAX];
+    if(strstr(filename, "Sales") != NULL)
     {
-        send(sock, ERROR_FILE_OPEN, strlen(ERROR_FILE_OPEN), 0);
-        printf("Exiting\n");
+        strcpy(requiredID, SALESTEAM);
+    }
+    else if(strstr(filename, "Offers") != NULL)
+    {
+        strcpy(requiredID, OFFERSTEAM);
+    }
+    else if(strstr(filename, "Promotions") != NULL)
+    {
+        strcpy(requiredID, PROMOTIONSTEAM);
+    }
+    else if(strstr(filename, "Marketing") != NULL)
+    {
+        strcpy(requiredID, MARKETINGTEAM);
+    }
+    else
+    {
+        strcpy(requiredID, EMPLOYEE);
+    }
+    
+    if(strstr(ids, requiredID) == NULL)
+    {
+        send(sock, ERROR_PERMISSION, strlen(ERROR_PERMISSION), 0);
+        fflush(stdout);
+        pthread_exit(NULL);
+    }
+
+    pid_t pid;
+
+    pid = fork();
+
+    if(pid > 0)
+    {
         fflush(stdout);
         pthread_exit(NULL);
     };
 
+    char *userID = strtok(ids, " ");
+    setegid(atoi(requiredID));
+    seteuid(atoi(userID));
+
+    FILE *fp = fopen(filename, "w");
+
+    if(fp == NULL)
+    {
+        send(sock, ERROR_FILE_OPEN, strlen(ERROR_FILE_OPEN), 0);
+        fflush(stdout);
+        pthread_exit(NULL);
+    };
+
+    int fd = fileno(fp);
+    int retval;
+    retval = flock(fd, LOCK_EX);
+
+    if(retval != 0)
+    {
+        send(sock, ERROR_FILE_LOCK, strlen(ERROR_FILE_LOCK), 0);
+        fflush(stdout);
+        pthread_exit(NULL);
+    }
+
     send(sock, OK, strlen(OK), 0);
     
-    int recvAmt;
     char buf[BUFSIZE];
 
     while((recvAmt = recv(sock, buf, BUFSIZE, 0)) > 0)
     {
-        printf("starting loop");
         fflush(stdout);
         int writeAmt = fwrite(buf, sizeof(char), recvAmt, fp);
-        printf("%d\n", writeAmt);
-        printf("loop");
         fflush(stdout);
-        //printf("%s", buf);
-        //bzero(buf, BUFSIZE);
     };
 
-    printf("Closing fp\n");
+    flock(fd, LOCK_UN);
     fclose(fp);
     close(sock);
     fflush(stdout);
-
 };

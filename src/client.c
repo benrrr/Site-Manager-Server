@@ -59,51 +59,63 @@ int main(int argc, char * argv[])
 
         int totalLen = dirLen + nameLen;
 
-        if(totalLen <= FILENAME_MAX)
-        {
-            char targetPath[totalLen];
-            printf("in if");
-            strcpy(targetPath, selections[selection]);
-            printf("copied");
-            strcat(targetPath, savename);
-            printf("catted");
-
-            sock = socket(AF_INET, SOCK_STREAM, 0);
-            int retval = connect(sock, (struct sockaddr *)&addr, sizeof(addr));
-
-            if(retval != 0)
-            {
-                printf("Could not connect");
-                exit(retval);
-            };
-
-            printf("Connected, sending %s", targetPath);
-            fflush(stdout);
-
-            send(sock, targetPath, totalLen, 0);
-            printf("Sent");
-            fflush(stdout);
-
-            char inbuf[BUFSIZE];
-            recv(sock, inbuf, BUFSIZE, 0);
-
-            printf("RESPONSE: %s", inbuf);
-            char buf[BUFSIZE];
-            FILE *fp = fopen(filename, "r");
-            int readAmt;
-
-            while((readAmt = fread(buf, sizeof(char), BUFSIZE, fp)) > 0)
-            {
-                send(sock, buf, readAmt, 0);
-                bzero(buf, BUFSIZE);
-            };
-
-            fclose(fp);
-            close(sock);
-        }
-        else
+        if(totalLen > FILENAME_MAX)
         {
             printf("Target directory + filename too long for system");
-        };    
+            exit(-1);
+        };
+
+        char targetPath[totalLen];
+        strcpy(targetPath, selections[selection]);
+        strcat(targetPath, savename);
+
+        char ids[(ID_MAX * GROUP_MAX) + 2 + GROUP_MAX];
+        sprintf(ids, "%i", getuid());
+
+        gid_t groups[GROUP_MAX];
+
+        int amt = getgroups(GROUP_MAX, groups);
+
+        for(int i=0; i < amt; i++)
+        {
+            char gid[ID_MAX];
+            sprintf(gid, " %i", groups[i]);
+
+            strcat(ids, gid);
+        };
+
+        sock = socket(AF_INET, SOCK_STREAM, 0);
+        if(connect(sock, (struct sockaddr *)&addr, sizeof(addr)) != 0)
+        {
+            printf("Could not connect");
+            exit(-1);
+        };
+
+        char response[BUFSIZE];
+        int sentAmt, recvAmt;
+
+        sentAmt = send(sock, ids, strlen(ids), 0);
+        recvAmt = recv(sock, response, BUFSIZE, 0);
+
+        printf("\nID RESP: %s", response);
+
+        sentAmt = send(sock, targetPath, totalLen, 0);
+        recvAmt = recv(sock, response, BUFSIZE, 0);
+
+        printf("\nFILE RESP %s", response);
+
+
+        char buf[BUFSIZE];
+        FILE *fp = fopen(filename, "r");
+        int readAmt;
+
+        while((readAmt = fread(buf, sizeof(char), BUFSIZE, fp)) > 0)
+        {
+            send(sock, buf, readAmt, 0);
+            bzero(buf, BUFSIZE);
+        };
+
+        fclose(fp);
+        close(sock); 
     }
 }
