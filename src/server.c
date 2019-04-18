@@ -37,7 +37,7 @@ int main(int argc, char * argv[])
 
     while(1)
     {
-        printf("Waiting for connections...\n\n");
+        printf("\n\nWaiting for connections...\n\n");
         cSock = accept(lSock, (struct sockaddr *)&cAddr, &len);
         struct connArgs args;
         args.sock = cSock;

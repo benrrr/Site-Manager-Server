@@ -34,7 +34,7 @@ void *handler(void *connArg)
     int connectedPort = ntohs(addr.sin_port);
 
     syslog(LOG_INFO, "New connection: %s, %d", connectedIP, connectedPort);
-    printf("New connection: %s, %d", connectedIP, connectedPort);
+    printf("\n\n connection: %s, %d\n\n", connectedIP, connectedPort);
 
     char ids[(ID_MAX * GROUP_MAX) + 2 + GROUP_MAX];
     char filename[FILENAME_MAX];
@@ -80,7 +80,6 @@ void *handler(void *connArg)
     char *userID = strtok(temp, " ");
 
     //check if the user has the required group id
-    printf("%s in %s", requiredID, ids);
     if(strstr(ids, requiredID) == NULL)
     {
         send(sock, ERROR_PERMISSION, strlen(ERROR_PERMISSION), 0);
