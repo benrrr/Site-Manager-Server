@@ -1,3 +1,8 @@
-# Systems Software Assignment 2
+# Site Manager Server
+A client-server application designed to provide controlled access to a websites shared resources.
 
-[Demo Video](https://www.youtube.com/watch?v=kMn4LhvPsIQ "Demo Video")
+It allows developers to upload files to the intranet/development site ensuring only users with specified access to each subfolder can make changes, e.g promotions team can only access the promotions folders. Also ensuring each file is attributed to the correct user.
+
+This is implmented using a mutlithreaded server, real and effective IDs, and file locks.
+
+Build handled by make.

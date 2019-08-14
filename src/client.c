@@ -1,7 +1,5 @@
 /*
     Ben Ryan
-    C15507277
-    System Software Assigment 2
     Client Application
 */
 
